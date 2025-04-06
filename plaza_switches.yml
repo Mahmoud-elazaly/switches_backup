@@ -1,0 +1,79 @@
+---
+- name: Backup Cisco Switch Configurations
+  hosts: all
+  gather_facts: no
+  connection: network_cli
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    backup_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+    backup_dir: "plaza_switches_{{ backup_date }}"
+
+  tasks:
+    - name: Ensure backup directory exists
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+      delegate_to: localhost
+
+    - name: Get configuration for Catalyst switches
+      cisco.ios.ios_command:
+        commands:
+          - show startup-config
+      register: startup_config_ios
+      when: ansible_network_os == "cisco.ios.ios"
+
+    - name: Get  configuration for Nexus switches
+      cisco.nxos.nxos_command:
+        commands:
+
+          - show running-config
+      register: running_config_nxos
+      when: ansible_network_os == "cisco.nxos.nxos"
+
+    - name: Save  configuration for Catalyst switches
+      copy:
+        content: "{{ startup_config_ios.stdout[0] }}"
+        dest: "{{ backup_dir }}/{{ inventory_hostname }}_backup_{{ backup_date }}.cfg"
+      delegate_to: localhost
+      when: ansible_network_os == "cisco.ios.ios"
+
+    - name: Save  configuration for Nexus switches
+      copy:
+        content: "{{ running_config_nxos.stdout[0] }}"
+        dest: "{{ backup_dir }}/{{ inventory_hostname }}_backup_{{ backup_date }}.cfg"
+      delegate_to: localhost
+      when: ansible_network_os == "cisco.nxos.nxos"
+
+#---------------------------------------------------------------------------------
+
+- name: Copy Backups
+  hosts: localhost
+  gather_facts: no
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    backup_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+    backup_dir: "plaza_switches_{{ backup_date }}"
+    destination_dir: "/tmp/sw-backup/plaza_switches"
+
+  tasks:
+
+    - name: Ensure destination directory exists
+      file:
+        path: "{{ destination_dir }}"
+        state: directory
+        mode: '0775'
+
+
+    - name: Copy backups to the Samba share
+      copy:
+        src: "{{ backup_dir }}"
+        dest: "{{ destination_dir }}"
+        directory_mode: '0775'
+        mode: '0777'
+
