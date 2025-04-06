@@ -1,0 +1,68 @@
+---
+- name: Backup Cisco Switch Configurations
+  hosts: all
+  gather_facts: no
+  connection: network_cli
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    backup_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+    backup_dir: "palm_switches_{{ backup_date }}"
+
+  tasks:
+    - name: Ensure backup directory exists
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+      delegate_to: localhost
+
+    - name: Get running configuration directly
+      cisco.ios.ios_command:
+        commands:
+          - show startup-config
+      register: startup_config
+      connection: network_cli
+        # become: yes
+        # become_method: enable
+
+    - name: Save running configuration to local file
+      copy:
+        content: "{{ startup_config.stdout[0] }}"
+        dest: "{{ backup_dir }}/{{ inventory_hostname }}_backup_{{ backup_date }}.cfg"
+      delegate_to: localhost
+
+
+#---------------------------------------------------------------------------------
+
+- name: Mount Samba and Copy Backups
+  hosts: localhost
+  gather_facts: no
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    backup_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+    backup_dir: "palm_switches_{{ backup_date }}"
+    destination_dir: "/tmp/sw-backup/palm_switches"
+
+  tasks:
+
+    - name: Ensure destination directory exists
+      file:
+        path: "{{ destination_dir }}"
+        state: directory
+        mode: '0775'
+          # become: yes
+          # become_method: sudo
+
+    - name: Copy backups to the Samba share
+      copy:
+        src: "{{ backup_dir }}"
+        dest: "{{ destination_dir }}/"
+        directory_mode: '0775'
+        mode: '0777'
+          # become: yes
+        # become_method: sudo
