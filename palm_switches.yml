@@ -24,8 +24,7 @@
           - show startup-config
       register: startup_config
       connection: network_cli
-        # become: yes
-        # become_method: enable
+
 
     - name: Save running configuration to local file
       copy:
@@ -55,8 +54,7 @@
         path: "{{ destination_dir }}"
         state: directory
         mode: '0775'
-          # become: yes
-          # become_method: sudo
+
 
     - name: Copy backups to the Samba share
       copy:
@@ -64,5 +62,4 @@
         dest: "{{ destination_dir }}/"
         directory_mode: '0775'
         mode: '0777'
-          # become: yes
-        # become_method: sudo
+
