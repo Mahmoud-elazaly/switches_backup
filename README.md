@@ -6,7 +6,7 @@ This project automates the backup of switch configurations from multiple sites a
 
 ## 📋 Features  
 
-- Automates configuration backups for switches across 4 sites.  
+- Automates configuration backups for switches across n sites.  
 - GitLab CI/CD pipeline schedules the backup process monthly.  
 - Transfers backup files to a central backup server via Samba.  
 
